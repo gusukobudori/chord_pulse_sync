@@ -1,0 +1,2031 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ambient & Pulse Companion v3</title>
+
+    <style>
+:root {
+    --bg:#0c0e11; --panel:#12151a; --raise:#1a1e25; --line:#232830;
+    --line-strong:#353c48; --text:#e8eaed; --muted:#7d8590;
+    --a:#5ab4e5; --b:#e08ab0; --accent:#f59e0b;
+}
+*{box-sizing:border-box;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+html{background:var(--bg);overscroll-behavior:none}
+body{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background:var(--bg);color:var(--text);margin:0;padding:20px 16px 48px;display:flex;flex-direction:column;align-items:center;min-height:100vh;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+.container{width:100%;max-width:760px} h1{font-size:1.05rem;font-weight:600;letter-spacing:.04em;margin:0 0 18px}
+.sec{padding:16px 0;border-top:1px solid var(--line)} .sec:first-of-type{border-top:0;padding-top:0}
+.label{font-size:.68rem;font-weight:600;letter-spacing:.1em;color:var(--muted)}
+button{font:inherit;color:inherit;cursor:pointer;-webkit-appearance:none;appearance:none;border-radius:4px}
+:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+.btn{height:40px;border:1px solid var(--line-strong);background:transparent;color:var(--text);font-size:.74rem;font-weight:600;letter-spacing:.08em;padding:0 10px;transition:background .12s,color .12s,border-color .12s}.btn:active{background:var(--raise)}
+.btn.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
+.btn.tog{color:var(--muted)} .btn.tog.on{color:var(--text);border-color:var(--text);background:var(--raise)}
+.btn.tog.chord.on{color:var(--a);border-color:var(--a);background:rgba(90,180,229,.12)}
+.btn.tog.pulse.on{color:var(--b);border-color:var(--b);background:rgba(224,138,176,.12)}
+.btn.hold.on{color:var(--accent);border-color:var(--accent);background:rgba(245,158,11,.10)}
+.top-controls{display:grid;grid-template-columns:1.2fr .8fr 1.2fr;gap:28px;align-items:end}
+.field{display:flex;align-items:center;gap:10px}.field .label{white-space:nowrap}
+.bpm-wrap{display:flex;align-items:center;justify-content:space-between;gap:10px}.bpm-input{width:64px;background:transparent;color:var(--text);border:0;border-bottom:1px solid var(--line-strong);border-radius:0;padding:2px 0;font:inherit;font-size:16px;font-weight:600;text-align:right;-webkit-user-select:text;user-select:text}.bpm-input:focus{outline:none;border-bottom-color:var(--text)}
+select{appearance:none;-webkit-appearance:none;color:var(--text);font:inherit;font-size:.78rem;border:1px solid var(--line-strong);border-radius:4px;padding:7px 26px 7px 10px;background:var(--panel) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237d8590' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 9px center}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:28px;background:transparent;margin:0}input[type=range]::-webkit-slider-runnable-track{height:2px;background:var(--line-strong)}input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--text);border:0;margin-top:-7px}input[type=range]::-moz-range-track{height:2px;background:var(--line-strong)}input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--text);border:0}
+.rng-a::-webkit-slider-thumb{background:var(--a)}.rng-a::-moz-range-thumb{background:var(--a)}.rng-b::-webkit-slider-thumb{background:var(--b)}.rng-b::-moz-range-thumb{background:var(--b)}
+.xy-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.pad-title{display:flex;align-items:center;gap:10px;margin-bottom:8px;width:calc(100% - 88px);min-width:0;height:38px}.pad-actions{display:grid;grid-template-columns:110px auto auto;align-items:center;gap:8px;min-width:0;margin-left:auto}.pulse-mode{width:130px;min-width:130px;text-align:center}.pulse-follow{width:125px;min-width:125px;text-align:center}.pulse-pan-mode{width:110px;min-width:110px;text-align:center}.pulse-pan-toggle{width:82px;min-width:82px}.voice-slot{width:110px;display:block}.voice-slot.placeholder{visibility:hidden}.pad-section{--c:var(--a)}.pad-section.pulse-section{--c:var(--b)}
+.pan-header-meter{width:180px;height:38px;flex:none;border:1px solid var(--line-strong);border-radius:4px;background:var(--panel);position:relative;overflow:hidden;margin-left:auto}.pan-header-label{position:absolute;left:8px;top:5px;font-size:.62rem;letter-spacing:.08em;color:var(--muted);z-index:2}.pan-header-track{position:absolute;left:8px;right:8px;bottom:4px;height:7px;background:#232830;border-radius:2px;overflow:visible}.pan-header-center{position:absolute;left:50%;top:-2px;width:1px;height:11px;background:var(--line-strong);transform:translateX(-50%)}.pan-header-indicator{position:absolute;left:50%;top:50%;width:9px;height:9px;border-radius:50%;background:var(--a);box-shadow:0 0 7px rgba(90,180,229,.55);transform:translate(-50%,-50%);transition:left .03s linear}
+.pulse-pan-header{width:180px;height:38px;flex:none;border:1px solid var(--line-strong);border-radius:4px;background:var(--panel);position:relative;overflow:hidden;margin-left:auto;display:flex;align-items:stretch}.pulse-pan-header-label{position:absolute;left:8px;top:5px;font-size:.62rem;letter-spacing:.08em;color:var(--muted);z-index:3}.pulse-pan-cell{position:relative;flex:1;margin-top:18px;margin-bottom:4px;background:#232830;border-right:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:0;color:transparent}.pulse-pan-cell:last-child{border-right:0}.pulse-pan-cell.active{background:rgba(224,138,176,.14);box-shadow:inset 0 0 10px rgba(224,138,176,.16)}.pulse-pan-cell::after{content:'';position:absolute;left:50%;top:50%;width:7px;height:7px;border-radius:50%;background:transparent;transform:translate(-50%,-50%)}.pulse-pan-cell.active::after{background:var(--b);box-shadow:0 0 8px rgba(224,138,176,.75)}
+.xy-pad-wrapper{position:relative;width:calc(100% - 88px);height:250px;margin-left:0;background:radial-gradient(circle at center,#171b21 0%,#0c0e11 100%);border:1px solid var(--line-strong);border-radius:4px;overflow:hidden;touch-action:none;cursor:crosshair}.pulse-pad-wrapper{border-color:rgba(224,138,176,.45)}
+.xy-grid-lines{position:absolute;inset:0;background-image:linear-gradient(to right,rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(to bottom,rgba(255,255,255,.035) 1px,transparent 1px);background-size:25% 25%;pointer-events:none}.xy-axis-label{position:absolute;font-size:.58rem;color:rgba(125,133,144,.72);pointer-events:none}.label-top{top:8px;left:50%;transform:translateX(-50%)}.label-bottom{bottom:8px;left:50%;transform:translateX(-50%)}.label-left{left:8px;top:50%;transform:translateY(-50%)}.label-right{right:8px;top:50%;transform:translateY(-50%)}
+.xy-chord-readout{position:absolute;top:10px;left:10px;font-size:.68rem;font-weight:600;color:var(--a);background:rgba(12,14,17,.78);padding:4px 8px;border-radius:3px;border:1px solid rgba(90,180,229,.35);pointer-events:none}.pulse-readout{color:var(--b);border-color:rgba(224,138,176,.35)}
+.xy-cursor{position:absolute;width:32px;height:32px;border-radius:50%;background:rgba(90,180,229,.10);border:2px solid var(--a);transform:translate(-50%,-50%);pointer-events:none;opacity:0;transition:opacity .15s;box-shadow:0 0 14px rgba(90,180,229,.35)}.pulse-cursor{background:rgba(224,138,176,.10);border-color:var(--b);box-shadow:0 0 14px rgba(224,138,176,.35)}.xy-cursor.visible{opacity:1}
+.pad-row{position:relative}.vertical-volume{position:absolute;right:0;top:0;width:70px;height:250px;display:block}.vertical-range{position:absolute!important;left:50%;top:110px;width:180px!important;height:24px!important;transform:translateX(-50%) rotate(-90deg);margin:0!important}.vertical-range::-webkit-slider-thumb{background:var(--c)!important}.vertical-range::-moz-range-thumb{background:var(--c)!important}.vertical-volume .label{position:absolute;left:50%;bottom:5px;transform:translateX(-50%);text-align:center;white-space:nowrap;font-size:.58rem}.volume-value{display:none}
+.pulse-controls-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}.pulse-mode,.pulse-follow,.arp-select{height:34px;border:1px solid var(--line-strong);background:transparent;color:var(--b);font-size:.68rem;font-weight:600;letter-spacing:.06em;padding:0 9px}.pulse-mode,.pulse-follow{border-color:rgba(224,138,176,.6)}.arp-select{color:var(--text);border-color:var(--line-strong);background:var(--panel);min-width:110px}
+.lfo-box{position:relative;width:calc(100% - 88px);height:38px;flex:none;margin-top:10px;border:1px solid var(--line-strong);border-radius:4px;background:var(--panel);overflow:hidden}.lfo-label{position:absolute;left:8px;top:5px;font-size:.62rem;letter-spacing:.08em;color:var(--muted);z-index:2}.lfo-value{color:var(--b)}.wave-bar-bg{position:absolute;left:8px;right:8px;bottom:4px;height:7px;background:#232830;border-radius:2px;overflow:hidden}.wave-bar-fill{height:100%;width:0;background:var(--b);border-radius:2px}.lfo-controls{width:calc(100% - 88px);display:flex;align-items:center;gap:10px;margin-top:8px}.period-control{display:flex;align-items:center;gap:8px;flex:1;min-width:0}.period-label{font-size:.58rem;color:var(--muted);white-space:nowrap}.period-range{position:static!important;flex:1;width:auto!important;height:24px!important;opacity:.9}.period-range::-webkit-slider-runnable-track{background:rgba(224,138,176,.35)}.period-range::-moz-range-track{background:rgba(224,138,176,.35)}.period-range::-webkit-slider-thumb{background:var(--b)}.period-range::-moz-range-thumb{background:var(--b)}.lfo-freeze{position:static;width:86px;height:30px;padding:0 9px;border:1px solid var(--line-strong);background:transparent;color:var(--muted);border-radius:3px;font-size:.62rem;font-weight:600;flex:none}.lfo-freeze.active{color:var(--accent);border-color:var(--accent)}
+
+.chord-pan-controls{width:calc(100% - 88px);margin-left:0;margin-right:88px;display:flex;align-items:center;gap:10px;margin-top:10px}.chord-pan-toggle{height:30px;padding:0 10px;border:1px solid rgba(90,180,229,.55);background:transparent;color:var(--muted);border-radius:3px;font-size:.62rem;font-weight:600;letter-spacing:.05em;flex:none}.chord-pan-toggle.on{color:var(--a);border-color:var(--a);background:rgba(90,180,229,.10)}.chord-pan-toggle:not(.on){color:var(--muted);border-color:var(--line-strong);background:transparent}.pulse-pan-toggle.on{color:var(--b);border-color:var(--b);background:rgba(224,138,176,.10)}.pulse-pan-toggle{color:var(--muted)}.pulse-pan-toggle.on{color:var(--b);border-color:var(--b);background:rgba(224,138,176,.10)}.chord-pan-period{display:flex;align-items:center;gap:8px;flex:1;min-width:0}.chord-pan-period-label{font-size:.58rem;color:var(--muted);white-space:nowrap}.chord-pan-range{position:static!important;flex:1;width:auto!important;height:24px!important}.chord-pan-range::-webkit-slider-runnable-track{background:rgba(90,180,229,.35)}.chord-pan-range::-moz-range-track{background:rgba(90,180,229,.35)}.chord-pan-range::-webkit-slider-thumb{background:var(--a)}.chord-pan-range::-moz-range-thumb{background:var(--a)}
+@media(max-width:560px){.pan-header-meter,.pulse-pan-header{width:150px}.pad-actions{gap:6px;grid-template-columns:100px auto auto}.voice-slot{width:100px}.pulse-mode{width:130px;min-width:130px}.pulse-follow{width:125px;min-width:125px}.pulse-pan-toggle{width:82px;min-width:82px}.pad-title{gap:6px}}
+
+.bitcrush-controls{width:calc(100% - 88px);display:flex;align-items:center;gap:10px;margin-top:10px}
+.sample-rate-controls{width:calc(100% - 88px);display:flex;align-items:center;gap:10px;margin-top:8px}.sample-rate-toggle{width:130px;height:30px;flex:none;border:1px solid var(--line-strong);background:transparent;color:var(--muted);font-size:.62rem;font-weight:600;letter-spacing:.06em;border-radius:4px}.sample-rate-toggle.on{color:var(--accent);border-color:var(--accent);background:rgba(245,158,11,.10)}.sample-rate-depth{display:flex;align-items:center;gap:8px;flex:1;min-width:0}.sample-rate-depth-label{font-size:.58rem;color:var(--muted);white-space:nowrap}.sample-rate-range{flex:1;width:auto!important;height:24px!important}.sample-rate-range::-webkit-slider-thumb{background:var(--accent)}.sample-rate-range::-moz-range-thumb{background:var(--accent)}.sample-rate-value{width:48px;text-align:right;font-size:.58rem;color:var(--muted)}.bitcrush-toggle{width:130px;height:30px;flex:none;border:1px solid var(--line-strong);background:transparent;color:var(--muted);font-size:.62rem;font-weight:600;letter-spacing:.06em;border-radius:4px}.bitcrush-toggle.on{color:var(--accent);border-color:var(--accent);background:rgba(245,158,11,.10)}.bitcrush-depth{display:flex;align-items:center;gap:8px;flex:1;min-width:0}.bitcrush-depth-label{font-size:.58rem;color:var(--muted);white-space:nowrap}.bitcrush-range{flex:1;width:auto!important;height:24px!important}.bitcrush-range::-webkit-slider-thumb{background:var(--accent)}.bitcrush-range::-moz-range-thumb{background:var(--accent)}.bitcrush-value{width:42px;text-align:right;font-size:.58rem;color:var(--muted)}
+</style>
+</head>
+
+<body>
+<div class="container">
+<h1>XY PAD</h1>
+
+<div class="sec">
+  <div class="top-controls">
+    <div class="bpm-box">
+      <div class="bpm-wrap"><span class="label">TEMPO</span><span><input type="text" class="bpm-input" id="bpmInput" inputmode="numeric" pattern="[0-9]*" maxlength="3" autocomplete="off" value="102" aria-label="BPM"> <span class="label">BPM</span></span></div>
+      <input type="range" id="bpmSlider" min="30" max="200" value="102">
+    </div>
+    <div class="field"><span class="label">ROOT</span><select id="rootSelect"><option value="C">C</option><option value="C#">C#</option><option value="D">D</option><option value="D#">D#</option><option value="E" selected>E</option><option value="F">F</option><option value="F#">F#</option><option value="G">G</option><option value="G#">G#</option><option value="A">A</option><option value="A#">A#</option><option value="B">B</option></select></div>
+    <div class="field"><span class="label">SCALE</span><select id="scaleSelect"><option value="chromatic">CHROMATIC</option><option value="major">MAJOR</option><option value="natural_minor">NATURAL MINOR</option><option value="dorian" selected>DORIAN</option><option value="pentatonic">PENTATONIC</option></select></div>
+  </div>
+</div>
+
+<div class="sec pad-section">
+  <div class="pad-title"><span class="label" style="color:var(--a)">CHORD</span><div class="pan-header-meter" aria-label="Chord pan meter"><span class="pan-header-label">PAN</span><div class="pan-header-track"><div class="pan-header-center"></div></div><div class="pan-header-indicator" id="chordPanIndicator"></div></div><button class="chord-pan-toggle" id="btnChordAutoPan">PAN: OFF</button><div class="pad-actions"><span class="voice-slot placeholder" aria-hidden="true"></span><button class="btn tog chord on" id="btnCodePadPower">PAD: ON</button><button class="btn tog hold" id="btnCodeHold">HOLD: OFF</button></div></div>
+  <div class="pad-row">
+    <div class="xy-pad-wrapper" id="codePad"><div class="xy-grid-lines"></div><div class="xy-axis-label label-top">BRIGHT / OPEN</div><div class="xy-axis-label label-bottom">WARM / DEEP</div><div class="xy-axis-label label-left">LOW</div><div class="xy-axis-label label-right">HIGH</div><div class="xy-chord-readout" id="chordDisplay">TOUCH PAD TO PLAY</div><div class="xy-cursor" id="codeCursor"></div></div>
+    <div class="vertical-volume"><span class="label">CHORD VOLUME</span><span class="volume-value" id="padVolVal"></span><input class="vertical-range" type="range" id="padVolSlider" min="0" max="100" value="65"></div>
+  </div>
+  <div class="chord-pan-controls">
+    <div class="chord-pan-period"><span class="chord-pan-period-label">PERIOD</span><input class="chord-pan-range" type="range" id="chordPanPeriodSlider" min="1.0" max="16.0" step="0.5" value="6.0"></div>
+  </div>
+</div>
+
+<div class="sec pad-section pulse-section">
+  <div class="pad-title"><span class="label" style="color:var(--b)">PULSE</span><div class="pulse-pan-header" aria-label="Pulse pan meter"><span class="pulse-pan-header-label">PAN</span><div class="pulse-pan-cell" id="pulsePanLeft"></div><div class="pulse-pan-cell" id="pulsePanRight"></div></div><button class="chord-pan-toggle pulse-pan-toggle" id="btnPulsePanPower">PAN: OFF</button><div class="pad-actions"><select class="arp-select voice-slot" id="arpVoiceSelect" aria-label="Arpeggio voices"><option value="3">VOICES: 3</option><option value="4" selected>VOICES: 4</option><option value="5">VOICES: 5</option><option value="6">VOICES: 6</option><option value="7">VOICES: 7</option><option value="8">VOICES: 8</option></select><button class="btn tog pulse on" id="btnPulsePadPower">PAD: ON</button><button class="btn tog hold" id="btnPulseHold">HOLD: OFF</button></div></div>
+  <div class="pad-row">
+    <div class="xy-pad-wrapper pulse-pad-wrapper" id="pulsePad"><div class="xy-grid-lines"></div><div class="xy-axis-label label-top">BRIGHT / OPEN</div><div class="xy-axis-label label-bottom">WARM / DEEP</div><div class="xy-axis-label label-left">LOW</div><div class="xy-axis-label label-right">HIGH</div><div class="xy-chord-readout pulse-readout" id="pulseDisplay">TOUCH PULSE PAD</div><div class="xy-cursor pulse-cursor" id="pulseCursor"></div></div>
+    <div class="vertical-volume"><input class="vertical-range" type="range" id="pulseMaxVolSlider" min="10" max="100" value="55"><span class="label">PULSE VOLUME</span><span class="volume-value" id="pulseMaxVolVal"></span></div>
+  </div>
+  <div class="pulse-controls-row">
+    <button class="pulse-mode" id="btnPulseMode">MODE: ARPEGGIO</button>
+    <button class="pulse-follow" id="btnPulsePanMode">PAN: ALT</button>
+    <button class="pulse-follow" id="btnPulsePitchMode">PITCH: FOLLOW</button>
+  </div>
+  <div class="lfo-box"><div class="lfo-label">LFO <span class="lfo-value" id="wavePctText">0%</span></div><div class="wave-bar-bg"><div class="wave-bar-fill" id="waveBarFill"></div></div></div>
+  <div class="lfo-controls"><div class="period-control"><span class="period-label">PERIOD</span><input class="period-range" type="range" id="waveSpeedSlider" min="1.0" max="16.0" step="0.5" value="6.0"><span id="waveSpeedVal" style="display:none">6.0 SEC</span></div><button class="lfo-freeze" id="btnWaveFreeze">WAVE: STOP</button></div>
+  <div class="bitcrush-controls"><button class="bitcrush-toggle" id="btnBitCrush">BIT CRUSH: OFF</button><div class="bitcrush-depth"><span class="bitcrush-depth-label">BITS</span><input class="bitcrush-range" type="range" id="bitCrushBitsSlider" min="2" max="16" step="1" value="8"><span class="bitcrush-value" id="bitCrushBitsVal">8 BIT</span></div></div>
+  <div class="sample-rate-controls"><button class="sample-rate-toggle" id="btnSampleRate">SAMPLE RATE: OFF</button><div class="sample-rate-depth"><span class="sample-rate-depth-label">REDUCE</span><input class="sample-rate-range" type="range" id="sampleRateSlider" min="1" max="32" step="1" value="1"><span class="sample-rate-value" id="sampleRateVal">1×</span></div></div>
+  <div class="mode-info" id="pulseModeInfo">FOLLOW: CHORD PITCH</div>
+</div>
+</div>
+
+<script>
+    const NOTE_NAMES = [
+        'C', 'C#', 'D', 'D#', 'E', 'F',
+        'F#', 'G', 'G#', 'A', 'A#', 'B'
+    ];
+
+    const SCALE_INTERVALS = {
+        chromatic: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+        major: [0, 2, 4, 5, 7, 9, 11],
+        natural_minor: [0, 2, 3, 5, 7, 8, 10],
+        dorian: [0, 2, 3, 5, 7, 9, 10],
+        pentatonic: [0, 2, 7, 9, 11]
+    };
+
+    let baseBpm = 102;
+    let currentRoot = 'E';
+    let currentScale = 'dorian';
+
+    let isCodePadOn = true;
+    let isCodePadDown = false;
+    let isCodeHold = false;
+    let isCodeSoundActive = false;
+    let codeNormX = 0.3;
+    let codeNormY = 0.5;
+    let isCodePitchSourceActive = true;
+
+    let isPulsePadOn = true;
+    let isPulsePadDown = false;
+    let isPulseHold = false;
+    let pulseNormX = 0.3;
+    let pulseNormY = 0.5;
+
+    let padMasterVol = 0.65;
+    const reverbAmount = 0.75;
+
+    let audioCtx = null;
+    let dryBus = null;
+    let wetBus = null;
+    let masterOut = null;
+    let reverbInput = null;
+
+    let padVoices = [];
+    let padFilter = null;
+    let padEnvGain = null;
+
+    let currentChordMidis = [52, 59, 62, 66];
+    let pulseChordMidis = [52, 59, 62, 66];
+
+    let isPulsePlaying = false;
+    let pulseMode = 'arpeggio';
+    let pulsePitchMode = 'follow';
+    let pulseArpVoices = 4;
+    let pulsePanMode = 'alternate';
+    let isPulsePan = false;
+    let isBitCrushOn = false;
+    let bitCrushBits = 8;
+    let bitCrushNode = null;
+    let isSampleRateOn = false;
+    let sampleRateReduction = 1;
+    let sampleRateNode = null;
+    let sampleRateHeldL = 0;
+    let sampleRateHeldR = 0;
+    let sampleRateCountL = 0;
+    let sampleRateCountR = 0;
+
+    let wavePeriodSec = 6.0;
+    let chordPanPeriodSec = 6.0;
+    let isChordAutoPan = false;
+    let pulseMaxVol = 0.55;
+    let isWaveFrozen = false;
+    let frozenWaveAmp = 0.5;
+    let frozenWavePhase = 0;
+
+    let pulseTimerID = null;
+    let nextPulseTime = 0;
+    let pulseStepCount = 0;
+    let waveStartTime = 0;
+    let frozenElapsedTime = 0;
+    let animFrameID = null;
+    let chordPanAnimFrameID = null;
+    let chordPanStartTime = 0;
+
+    /*
+     * パルス停止時のフェード状態。
+     *
+     * 16分音符を12回分かけてフェードアウト。
+     * 4音アルペジオなら約3周分。
+     */
+    let isPulseFading = false;
+    let pulseFadeStepsRemaining = 0;
+    const PULSE_FADE_STEPS = 12;
+
+    function updateBitCrushCurve() {
+        if (!audioCtx || !bitCrushNode) return;
+
+        const size = 4096;
+        const curve = new Float32Array(size);
+        const levels = Math.pow(2, Math.max(1, bitCrushBits - 1));
+
+        for (let i = 0; i < size; i++) {
+            const x = (i / (size - 1)) * 2 - 1;
+            curve[i] = isBitCrushOn
+                ? Math.round(x * levels) / levels
+                : x;
+        }
+
+        bitCrushNode.curve = curve;
+    }
+
+    function midiToFreq(midi) {
+        return 440.0 * Math.pow(2, (midi - 69) / 12.0);
+    }
+
+    function midiToName(midi) {
+        return `${NOTE_NAMES[((midi % 12) + 12) % 12]}${Math.floor(midi / 12) - 1}`;
+    }
+
+    function computeChordFromXY(x) {
+        const rootIdx = NOTE_NAMES.indexOf(currentRoot);
+        const intervals = SCALE_INTERVALS[currentScale];
+        const baseMidi = 48 + rootIdx;
+        let scaleNotes = [];
+
+        for (let oct = 0; oct < 3; oct++) {
+            for (let iv of intervals) {
+                scaleNotes.push(baseMidi + oct * 12 + iv);
+            }
+        }
+
+        const maxDeg = Math.max(1, intervals.length - 1);
+
+        const deg = Math.min(
+            maxDeg,
+            Math.floor(x * (maxDeg + 0.99))
+        );
+
+        const n1 = scaleNotes[deg] || baseMidi;
+        const n2 = scaleNotes[deg + 2] || (n1 + 7);
+        const n3 = scaleNotes[deg + 4] || (n1 + 12);
+        const n4 = scaleNotes[deg + 6] || (n1 + 14);
+
+        return [n1, n2, n3, n4];
+    }
+
+    function computePulseChordFromXY(x, y) {
+        const rootIdx = NOTE_NAMES.indexOf(currentRoot);
+        const intervals = SCALE_INTERVALS[currentScale];
+        const baseMidi = 48 + rootIdx;
+        const scaleNotes = [];
+        for (let oct = 0; oct < 4; oct++) {
+            for (const iv of intervals) scaleNotes.push(baseMidi + oct * 12 + iv);
+        }
+        const maxDeg = Math.max(1, intervals.length - 1);
+        const deg = Math.min(maxDeg, Math.floor(x * (maxDeg + 0.99)));
+        const out = [];
+        for (let i = 0; i < 8; i++) {
+            const note = scaleNotes[deg + i * 2];
+            out.push(note == null ? (out[i - 1] + 2) : note);
+        }
+        return out;
+    }
+
+    function getPulseSourceChord() {
+        if (
+            pulsePitchMode === 'follow' &&
+            isCodePitchSourceActive
+        ) {
+            return pulseChordMidis;
+        }
+
+        return pulseChordMidis;
+    }
+
+    function updatePulseDisplay() {
+        const display = document.getElementById('pulseDisplay');
+
+        if (!display) {
+            return;
+        }
+
+        if (!isPulsePadOn) {
+            display.textContent = 'PAD: OFF';
+            return;
+        }
+
+        if (
+            pulsePitchMode === 'follow' &&
+            isCodePitchSourceActive
+        ) {
+            display.textContent = 'FOLLOW: CHORD PITCH';
+        } else {
+            display.textContent =
+                pulseChordMidis.slice(0, pulseArpVoices).map(midiToName).join(' - ');
+        }
+    }
+
+    function syncPulsePadToCodePad() {
+        pulseNormX = codeNormX;
+        pulseNormY = codeNormY;
+
+        const pulseCursor =
+            document.getElementById('pulseCursor');
+
+        if (pulseCursor) {
+            pulseCursor.style.left =
+                `${pulseNormX * 100}%`;
+
+            pulseCursor.style.top =
+                `${(1.0 - pulseNormY) * 100}%`;
+        }
+
+        pulseChordMidis =
+            computePulseChordFromXY(
+                pulseNormX,
+                pulseNormY
+            );
+    }
+
+    function createReverbIR(ctx, duration = 5.0, decay = 2.4) {
+        const rate = ctx.sampleRate;
+        const len = Math.floor(rate * duration);
+        const buf = ctx.createBuffer(2, len, rate);
+
+        for (let ch = 0; ch < 2; ch++) {
+            const data = buf.getChannelData(ch);
+
+            for (let i = 0; i < len; i++) {
+                const t = i / rate;
+
+                const env =
+                    Math.pow(1 - i / len, decay) *
+                    Math.min(1, t / 0.06);
+
+                data[i] =
+                    (Math.random() * 2 - 1) *
+                    env;
+            }
+        }
+
+        return buf;
+    }
+
+    function initAudio() {
+        if (audioCtx) {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            return;
+        }
+
+        audioCtx =
+            new (
+                window.AudioContext ||
+                window.webkitAudioContext
+            )();
+
+        const convolver =
+            audioCtx.createConvolver();
+
+        convolver.buffer =
+            createReverbIR(
+                audioCtx,
+                5.2,
+                2.3
+            );
+
+        const revLowpass =
+            audioCtx.createBiquadFilter();
+
+        revLowpass.type = 'lowpass';
+        revLowpass.frequency.value = 3200;
+
+        dryBus = audioCtx.createGain();
+        dryBus.gain.value = 0.55;
+
+        wetBus = audioCtx.createGain();
+        wetBus.gain.value = reverbAmount * 0.85;
+
+        const comp =
+            audioCtx.createDynamicsCompressor();
+
+        comp.threshold.value = -14;
+        comp.ratio.value = 4;
+
+        bitCrushNode = audioCtx.createWaveShaper();
+        bitCrushNode.oversample = 'none';
+        updateBitCrushCurve();
+
+        sampleRateNode = audioCtx.createScriptProcessor(1024, 2, 2);
+        sampleRateNode.onaudioprocess = (e) => {
+            const input = e.inputBuffer;
+            const output = e.outputBuffer;
+            const leftIn = input.getChannelData(0);
+            const rightIn = input.numberOfChannels > 1 ? input.getChannelData(1) : leftIn;
+            const leftOut = output.getChannelData(0);
+            const rightOut = output.numberOfChannels > 1 ? output.getChannelData(1) : leftOut;
+            const step = Math.max(1, sampleRateReduction);
+            for (let i = 0; i < leftOut.length; i++) {
+                if (!isSampleRateOn) {
+                    leftOut[i] = leftIn[i];
+                    rightOut[i] = rightIn[i];
+                    continue;
+                }
+                if (sampleRateCountL <= 0) {
+                    sampleRateHeldL = leftIn[i];
+                    sampleRateCountL = step;
+                }
+                if (sampleRateCountR <= 0) {
+                    sampleRateHeldR = rightIn[i];
+                    sampleRateCountR = step;
+                }
+                leftOut[i] = sampleRateHeldL;
+                rightOut[i] = sampleRateHeldR;
+                sampleRateCountL--;
+                sampleRateCountR--;
+            }
+        };
+
+        masterOut = audioCtx.createGain();
+        masterOut.gain.value = 0.9;
+
+        /*
+         * EFFECT ORDER:
+         * CHORD + PULSE
+         *   -> COMP
+         *   -> BIT CRUSH
+         *   -> SAMPLE RATE REDUCTION
+         *   -> split to DRY + REVERB
+         *   -> MASTER OUT
+         *
+         * Reverb is intentionally placed after the degradation effects,
+         * so the reverb tail remains audible even when either effect is ON.
+         * When both effects are OFF, the signal still passes through the
+         * same reverb path.
+         */
+        dryBus.connect(comp);
+        comp.connect(bitCrushNode);
+        bitCrushNode.connect(sampleRateNode);
+
+        reverbInput = audioCtx.createGain();
+        reverbInput.gain.value = 1.0;
+
+        sampleRateNode.connect(masterOut);
+        sampleRateNode.connect(reverbInput);
+
+        reverbInput.connect(convolver);
+        convolver.connect(revLowpass);
+        revLowpass.connect(wetBus);
+        wetBus.connect(masterOut);
+
+        masterOut.connect(audioCtx.destination);
+
+        padFilter =
+            audioCtx.createBiquadFilter();
+
+        padFilter.type = 'lowpass';
+        padFilter.frequency.value = 900;
+        padFilter.Q.value = 1.2;
+
+        padEnvGain = audioCtx.createGain();
+        padEnvGain.gain.value = 0.0001;
+
+        padFilter.connect(padEnvGain);
+        padEnvGain.connect(dryBus);
+        padEnvGain.connect(convolver);
+
+        const pans = [-0.55, 0.55, -0.25, 0.25];
+
+        currentChordMidis =
+            computeChordFromXY(codeNormX);
+
+        pulseChordMidis =
+            computePulseChordFromXY(
+                pulseNormX,
+                pulseNormY
+            );
+
+        for (let i = 0; i < 4; i++) {
+            const osc1 = audioCtx.createOscillator();
+            const osc2 = audioCtx.createOscillator();
+            const voiceGain = audioCtx.createGain();
+            const panner = audioCtx.createStereoPanner();
+
+            osc1.type = 'triangle';
+            osc2.type = 'sine';
+
+            osc1.detune.value = -5;
+            osc2.detune.value = 6;
+
+            const freq =
+                midiToFreq(
+                    currentChordMidis[i]
+                );
+
+            osc1.frequency.value = freq;
+            osc2.frequency.value = freq * 2.0;
+
+            const osc2Gain =
+                audioCtx.createGain();
+
+            osc2Gain.gain.value = 0.22;
+            voiceGain.gain.value = 0.16;
+            panner.pan.value = pans[i];
+
+            osc1.connect(voiceGain);
+            osc2.connect(osc2Gain);
+            osc2Gain.connect(voiceGain);
+            voiceGain.connect(panner);
+            panner.connect(padFilter);
+
+            osc1.start();
+            osc2.start();
+
+            padVoices.push({
+                osc1,
+                osc2,
+                panner,
+                basePan: pans[i]
+            });
+        }
+
+        audioCtx.sharedConvolver = convolver;
+    }
+
+    function updateChordAutoPan() {
+        if (!audioCtx || !padVoices.length) {
+            return;
+        }
+
+        const now = audioCtx.currentTime;
+        let pan = 0;
+
+        if (isChordAutoPan) {
+            const phase =
+                ((now - chordPanStartTime) / chordPanPeriodSec) *
+                Math.PI * 2;
+
+            pan = Math.sin(phase);
+        }
+
+        const panIndicator =
+            document.getElementById('chordPanIndicator');
+
+        if (panIndicator) {
+            panIndicator.style.left =
+                `${50 + pan * 50}%`;
+        }
+
+        padVoices.forEach((v) => {
+            const targetPan =
+                isChordAutoPan
+                    ? pan
+                    : v.basePan;
+
+            v.panner.pan.setTargetAtTime(
+                targetPan,
+                now,
+                0.025
+            );
+        });
+
+        updateChordPanVisual(pan);
+    }
+
+    function animateChordAutoPan() {
+        if (!audioCtx) {
+            chordPanAnimFrameID = null;
+            return;
+        }
+
+        updateChordAutoPan();
+
+        chordPanAnimFrameID =
+            requestAnimationFrame(animateChordAutoPan);
+    }
+
+    function startChordAutoPanAnimation() {
+        if (chordPanAnimFrameID) {
+            return;
+        }
+
+        animateChordAutoPan();
+    }
+
+    function stopChordAutoPanAnimation() {
+        if (chordPanAnimFrameID) {
+            cancelAnimationFrame(chordPanAnimFrameID);
+            chordPanAnimFrameID = null;
+        }
+    }
+
+    function updateCodePadSound(x, y, immediate = false) {
+        if (!audioCtx) {
+            return;
+        }
+
+        const now = audioCtx.currentTime;
+
+        const glide =
+            immediate
+                ? 0.02
+                : 0.14;
+
+        currentChordMidis =
+            computeChordFromXY(x);
+
+        if (
+            isCodePadOn &&
+            isCodeSoundActive
+        ) {
+            document.getElementById('chordDisplay').textContent =
+                currentChordMidis
+                    .map(midiToName)
+                    .join(' - ');
+        }
+
+        if (
+            pulsePitchMode === 'follow' &&
+            isCodePitchSourceActive
+        ) {
+            syncPulsePadToCodePad();
+            updatePulseDisplay();
+        }
+
+        padVoices.forEach((v, i) => {
+            const freq =
+                midiToFreq(
+                    currentChordMidis[i]
+                );
+
+            v.osc1.frequency.setTargetAtTime(
+                freq,
+                now,
+                glide
+            );
+
+            v.osc2.frequency.setTargetAtTime(
+                freq * 2.0,
+                now,
+                glide
+            );
+        });
+
+        const cutoff =
+            260 *
+            Math.pow(
+                10,
+                y * 1.0
+            );
+
+        padFilter.frequency.setTargetAtTime(
+            cutoff,
+            now,
+            0.08
+        );
+    }
+
+    function setCodeSoundActive(active) {
+        if (!audioCtx) {
+            return;
+        }
+
+        if (
+            active &&
+            !isCodePadOn
+        ) {
+            active = false;
+        }
+
+        isCodeSoundActive = active;
+
+        const now =
+            audioCtx.currentTime;
+
+        padEnvGain.gain.cancelScheduledValues(now);
+
+        if (active) {
+            isCodePitchSourceActive = true;
+
+            updateCodePadSound(
+                codeNormX,
+                codeNormY,
+                false
+            );
+
+            /*
+             * CHORD PADの立ち上がりは
+             * ゆっくり0.5秒。
+             */
+            padEnvGain.gain.setTargetAtTime(
+                Math.max(
+                    0.001,
+                    padMasterVol * 0.85
+                ),
+                now,
+                0.5
+            );
+        } else {
+            padEnvGain.gain.setTargetAtTime(
+                0.0001,
+                now,
+                0.8
+            );
+
+            if (!isCodeHold) {
+                document.getElementById('chordDisplay').textContent =
+                    isCodePadOn
+                        ? 'TOUCH PAD TO PLAY'
+                        : 'PAD: OFF';
+            }
+        }
+    }
+
+    /*
+     * pulseFadeAmount:
+     *
+     * 通常時 1.0
+     * フェード時は1.0 → 0.0へ
+     *
+     * 1発ごとの音量を下げることで、
+     * リバーブだけが残るのではなく、
+     * 「演奏そのもの」が少しずつ消えていく。
+     */
+    function getPulseFadeAmount() {
+        if (!isPulseFading) {
+            return 1.0;
+        }
+
+        if (pulseFadeStepsRemaining <= 0) {
+            return 0.0;
+        }
+
+        return (
+            pulseFadeStepsRemaining /
+            PULSE_FADE_STEPS
+        );
+    }
+
+    function triggerSoftPulseNote(
+        freq,
+        time,
+        waveAmp,
+        stepIdx,
+        fadeAmount = 1.0
+    ) {
+        if (waveAmp <= 0.01 || fadeAmount <= 0.01) {
+            return;
+        }
+
+        const stepDur =
+            (60.0 / baseBpm) / 4.0;
+
+        const attack =
+            Math.min(
+                0.045,
+                stepDur * 0.38
+            );
+
+        const release =
+            Math.max(
+                0.28,
+                stepDur * 2.4
+            );
+
+        const osc =
+            audioCtx.createOscillator();
+
+        const filter =
+            audioCtx.createBiquadFilter();
+
+        const env =
+            audioCtx.createGain();
+
+        const panner =
+            audioCtx.createStereoPanner();
+
+        osc.type = 'sine';
+
+        osc.frequency.setValueAtTime(
+            freq,
+            time
+        );
+
+        filter.type = 'lowpass';
+
+        filter.frequency.setValueAtTime(
+            1100 +
+            waveAmp * 900,
+            time
+        );
+
+        let pulsePan = 0;
+
+        if (isPulsePan) {
+            if (pulsePanMode === 'alternate') {
+                pulsePan = (stepIdx % 2 === 0) ? -1 : 1;
+            } else {
+                pulsePan = Math.random() < 0.5 ? -1 : 1;
+            }
+        }
+
+        panner.pan.setValueAtTime(
+            pulsePan,
+            time
+        );
+
+        updatePulsePanVisual(pulsePan);
+
+        const peak =
+            waveAmp *
+            pulseMaxVol *
+            0.22 *
+            fadeAmount;
+
+        env.gain.setValueAtTime(
+            0.0001,
+            time
+        );
+
+        env.gain.linearRampToValueAtTime(
+            Math.max(0.0002, peak),
+            time + attack
+        );
+
+        env.gain.exponentialRampToValueAtTime(
+            0.0001,
+            time +
+            attack +
+            release
+        );
+
+        osc.connect(filter);
+        filter.connect(env);
+        env.connect(panner);
+
+        panner.connect(dryBus);
+
+        osc.start(time);
+
+        osc.stop(
+            time +
+            attack +
+            release +
+            0.05
+        );
+    }
+
+    function getLiveWaveAmplitude(atTime) {
+        const elapsed =
+            (
+                atTime -
+                waveStartTime
+            ) +
+            frozenElapsedTime;
+
+        const phase =
+            (
+                elapsed /
+                wavePeriodSec
+            ) *
+            Math.PI *
+            2;
+
+        return (
+            0.5 *
+            (
+                1.0 -
+                Math.cos(phase)
+            )
+        );
+    }
+
+    function getWaveAmplitude(atTime) {
+        if (isWaveFrozen) {
+            return frozenWaveAmp;
+        }
+
+        return getLiveWaveAmplitude(atTime);
+    }
+
+    function getLiveWavePhase(atTime) {
+        const elapsed =
+            (
+                atTime -
+                waveStartTime
+            ) +
+            frozenElapsedTime;
+
+        const phase =
+            (
+                elapsed /
+                wavePeriodSec
+            ) *
+            Math.PI *
+            2;
+
+        let normalized =
+            phase %
+            (Math.PI * 2);
+
+        if (normalized < 0) {
+            normalized += Math.PI * 2;
+        }
+
+        return normalized;
+    }
+
+    function updatePulsePanVisual(panValue) {
+        const left = document.getElementById('pulsePanLeft');
+        const right = document.getElementById('pulsePanRight');
+        if (!left || !right) return;
+        left.classList.toggle('active', panValue < 0);
+        right.classList.toggle('active', panValue > 0);
+    }
+
+    function updateChordPanVisual(panValue) {
+        const indicator = document.getElementById('chordPanIndicator');
+        if (!indicator) return;
+        indicator.style.left = `${50 + panValue * 50}%`;
+    }
+
+    function pulseScheduler() {
+        if (
+            !isPulsePlaying &&
+            !isPulseFading
+        ) {
+            return;
+        }
+
+        const lookahead = 0.1;
+
+        const stepDur =
+            (60.0 / baseBpm) / 4.0;
+
+        while (
+            nextPulseTime <
+            audioCtx.currentTime +
+            lookahead
+        ) {
+            const waveAmp =
+                getWaveAmplitude(
+                    nextPulseTime
+                );
+
+            const fadeAmount =
+                getPulseFadeAmount();
+
+            /*
+             * フェード中は発音そのものを
+             * 少しずつ小さくする。
+             */
+            if (fadeAmount > 0.01) {
+                let freq = 329.63;
+
+                const sourceChord =
+                    getPulseSourceChord();
+
+                if (pulseMode === 'arpeggio') {
+                    const chordNoteMidi =
+                        sourceChord[
+                            pulseStepCount %
+                            Math.min(pulseArpVoices, sourceChord.length)
+                        ] + 12;
+
+                    freq =
+                        midiToFreq(
+                            chordNoteMidi
+                        );
+                } else {
+                    const rootNoteMidi =
+                        sourceChord[0];
+
+                    freq =
+                        midiToFreq(
+                            rootNoteMidi + 12
+                        );
+                }
+
+                triggerSoftPulseNote(
+                    freq,
+                    nextPulseTime,
+                    waveAmp,
+                    pulseStepCount,
+                    fadeAmount
+                );
+            }
+
+            nextPulseTime += stepDur;
+            pulseStepCount++;
+
+            if (isPulseFading) {
+                pulseFadeStepsRemaining--;
+
+                if (
+                    pulseFadeStepsRemaining <= 0
+                ) {
+                    isPulseFading = false;
+                    isPulsePlaying = false;
+                    break;
+                }
+            }
+        }
+
+        if (
+            isPulsePlaying ||
+            isPulseFading
+        ) {
+            pulseTimerID =
+                setTimeout(
+                    pulseScheduler,
+                    25
+                );
+        } else {
+            pulseTimerID = null;
+        }
+    }
+
+    function startPulse() {
+        if (
+            !audioCtx ||
+            !isPulsePadOn
+        ) {
+            return;
+        }
+
+        /*
+         * フェード中にもう一度触った場合は
+         * フェードをキャンセルして通常再生へ戻す。
+         */
+        isPulseFading = false;
+        pulseFadeStepsRemaining = 0;
+
+        if (isPulsePlaying) {
+            return;
+        }
+
+        isPulsePlaying = true;
+
+        waveStartTime =
+            audioCtx.currentTime;
+
+        frozenElapsedTime = 0;
+
+        nextPulseTime =
+            audioCtx.currentTime +
+            0.05;
+
+        pulseStepCount = 0;
+
+        pulseScheduler();
+        updateWaveVisual();
+    }
+
+    function stopPulse() {
+        /*
+         * すでに停止処理中なら何もしない。
+         */
+        if (
+            !isPulsePlaying &&
+            !isPulseFading
+        ) {
+            return;
+        }
+
+        /*
+         * 新しい通常演奏はここで終了。
+         *
+         * ただし isPulseFading をONにして、
+         * 12個の16分音符を小さくしながら
+         * フェードアウトさせる。
+         */
+        isPulsePlaying = false;
+        isPulseFading = true;
+        pulseFadeStepsRemaining =
+            PULSE_FADE_STEPS;
+
+        /*
+         * 現在位置からフェードを開始。
+         */
+        nextPulseTime =
+            Math.max(
+                nextPulseTime,
+                audioCtx.currentTime + 0.01
+            );
+
+        /*
+         * 波表示は演奏終了扱いなので0へ。
+         * 実際の音はスケジューラーが
+         * 12ステップ分だけ続く。
+         */
+        if (animFrameID) {
+            cancelAnimationFrame(animFrameID);
+            animFrameID = null;
+        }
+
+        document.getElementById('waveBarFill').style.width = '0%';
+        document.getElementById('wavePctText').textContent = '0%';
+
+        if (
+            !pulseTimerID
+        ) {
+            pulseScheduler();
+        }
+    }
+
+    function updateWaveVisual() {
+        if (
+            !isPulsePlaying ||
+            !audioCtx
+        ) {
+            document.getElementById('waveBarFill').style.width = '0%';
+            document.getElementById('wavePctText').textContent = '0%';
+            return;
+        }
+
+        const amp =
+            getWaveAmplitude(
+                audioCtx.currentTime
+            );
+
+        const pct =
+            Math.round(
+                amp * 100
+            );
+
+        document.getElementById('waveBarFill').style.width =
+            `${pct}%`;
+
+        document.getElementById('wavePctText').textContent =
+            `${pct}%`;
+
+        animFrameID =
+            requestAnimationFrame(
+                updateWaveVisual
+            );
+    }
+
+    window.addEventListener(
+        'DOMContentLoaded',
+        () => {
+            const codePad =
+                document.getElementById('codePad');
+
+            const codeCursor =
+                document.getElementById('codeCursor');
+
+            const pulsePad =
+                document.getElementById('pulsePad');
+
+            const pulseCursor =
+                document.getElementById('pulseCursor');
+
+            pulseChordMidis =
+                computePulseChordFromXY(
+                    pulseNormX,
+                    pulseNormY
+                );
+
+            function handleCodePointer(e) {
+                const rect =
+                    codePad.getBoundingClientRect();
+
+                codeNormX =
+                    Math.max(
+                        0,
+                        Math.min(
+                            1,
+                            (
+                                e.clientX -
+                                rect.left
+                            ) /
+                            rect.width
+                        )
+                    );
+
+                codeNormY =
+                    Math.max(
+                        0,
+                        Math.min(
+                            1,
+                            1.0 -
+                            (
+                                e.clientY -
+                                rect.top
+                            ) /
+                            rect.height
+                        )
+                    );
+
+                codeCursor.style.left =
+                    `${codeNormX * 100}%`;
+
+                codeCursor.style.top =
+                    `${(
+                        1.0 -
+                        codeNormY
+                    ) * 100}%`;
+
+                codeCursor.classList.add('visible');
+
+                isCodePitchSourceActive = true;
+
+                updateCodePadSound(
+                    codeNormX,
+                    codeNormY,
+                    false
+                );
+            }
+
+            codePad.addEventListener(
+                'pointerdown',
+                (e) => {
+                    initAudio();
+
+                    codePad.setPointerCapture(
+                        e.pointerId
+                    );
+
+                    isCodePadDown = true;
+
+                    handleCodePointer(e);
+
+                    if (isCodePadOn) {
+                        setCodeSoundActive(true);
+                    } else {
+                        isCodeSoundActive = false;
+                    }
+                }
+            );
+
+            codePad.addEventListener(
+                'pointermove',
+                (e) => {
+                    if (!isCodePadDown) {
+                        return;
+                    }
+
+                    handleCodePointer(e);
+                }
+            );
+
+            function endCodeTouch() {
+                if (!isCodePadDown) {
+                    return;
+                }
+
+                isCodePadDown = false;
+
+                if (!isCodeHold) {
+                    codeCursor.classList.remove('visible');
+
+                    if (isCodeSoundActive) {
+                        setCodeSoundActive(false);
+                    }
+                }
+            }
+
+            codePad.addEventListener('pointerup', endCodeTouch);
+            codePad.addEventListener('pointercancel', endCodeTouch);
+
+            const btnCodePadPower =
+                document.getElementById(
+                    'btnCodePadPower'
+                );
+
+            btnCodePadPower.addEventListener(
+                'click',
+                () => {
+                    initAudio();
+
+                    isCodePadOn =
+                        !isCodePadOn;
+
+                    if (!isCodePadOn) {
+                        isCodePitchSourceActive = false;
+                        isCodePadDown = false;
+                        isCodeSoundActive = false;
+                        isCodeHold = false;
+
+                        document
+                            .getElementById('btnCodeHold')
+                            .classList.remove('on');
+
+                        document
+                            .getElementById('btnCodeHold')
+                            .textContent =
+                            'HOLD: OFF';
+
+                        codeCursor.classList.remove('visible');
+
+                        setCodeSoundActive(false);
+
+                        document
+                            .getElementById('chordDisplay')
+                            .textContent =
+                            'PAD: OFF';
+
+                        updatePulseDisplay();
+                    } else {
+                        isCodePitchSourceActive = false;
+                        isCodeSoundActive = false;
+
+                        document
+                            .getElementById('chordDisplay')
+                            .textContent =
+                            'TOUCH PAD TO PLAY';
+
+                        updatePulseDisplay();
+                    }
+
+                    btnCodePadPower.classList.toggle(
+                        'on',
+                        isCodePadOn
+                    );
+
+                    btnCodePadPower.textContent =
+                        isCodePadOn
+                            ? 'PAD: ON'
+                            : 'PAD: OFF';
+                }
+            );
+
+            const btnCodeHold =
+                document.getElementById(
+                    'btnCodeHold'
+                );
+
+            btnCodeHold.addEventListener(
+                'click',
+                () => {
+                    isCodeHold = !isCodeHold;
+
+                    btnCodeHold.classList.toggle(
+                        'on',
+                        isCodeHold
+                    );
+
+                    btnCodeHold.textContent =
+                        isCodeHold
+                            ? 'HOLD: ON'
+                            : 'HOLD: OFF';
+
+                    if (!isCodeHold) {
+                        if (!isCodePadDown) {
+                            codeCursor.classList.remove('visible');
+
+                            if (isCodeSoundActive) {
+                                setCodeSoundActive(false);
+                            }
+                        }
+                    }
+                }
+            );
+
+            function handlePulsePointer(e) {
+                /*
+                 * PULSE PADのカーソル位置は、
+                 * FOLLOW / SEPARATE に関係なく
+                 * 常にPULSE PAD自身のタップ位置を表示する。
+                 *
+                 * FOLLOW中にコードが有効でも、
+                 * カーソル位置はコードパッドへ移動させない。
+                 * 音程の参照先だけがコードパッドになる。
+                 */
+                const rect =
+                    pulsePad.getBoundingClientRect();
+
+                pulseNormX =
+                    Math.max(
+                        0,
+                        Math.min(
+                            1,
+                            (
+                                e.clientX -
+                                rect.left
+                            ) /
+                            rect.width
+                        )
+                    );
+
+                pulseNormY =
+                    Math.max(
+                        0,
+                        Math.min(
+                            1,
+                            1.0 -
+                            (
+                                e.clientY -
+                                rect.top
+                            ) /
+                            rect.height
+                        )
+                    );
+
+                pulseCursor.style.left =
+                    `${pulseNormX * 100}%`;
+
+                pulseCursor.style.top =
+                    `${(
+                        1.0 -
+                        pulseNormY
+                    ) * 100}%`;
+
+                pulseCursor.classList.add('visible');
+
+                /*
+                 * PULSE PAD自身の現在位置から音程を計算して保持。
+                 * FOLLOW中にコードが有効なら、
+                 * 実際の再生音はgetPulseSourceChord()によって
+                 * コードパッド側の音程を使用する。
+                 * コードが無効ならFOLLOWのままでも
+                 * このPULSE PAD側の音程が再生される。
+                 */
+                pulseChordMidis =
+                    computePulseChordFromXY(
+                        pulseNormX,
+                        pulseNormY
+                    );
+
+                updatePulseDisplay();
+            }
+
+            pulsePad.addEventListener(
+                'pointerdown',
+                (e) => {
+                    initAudio();
+
+                    pulsePad.setPointerCapture(
+                        e.pointerId
+                    );
+
+                    isPulsePadDown = true;
+
+                    handlePulsePointer(e);
+                    pulseCursor.classList.add('visible');
+
+                    if (isPulsePadOn) {
+                        startPulse();
+                    }
+                }
+            );
+
+            pulsePad.addEventListener(
+                'pointermove',
+                (e) => {
+                    if (!isPulsePadDown) {
+                        return;
+                    }
+
+                    handlePulsePointer(e);
+                }
+            );
+
+            function endPulseTouch() {
+                if (!isPulsePadDown) {
+                    return;
+                }
+
+                isPulsePadDown = false;
+
+                if (!isPulseHold) {
+                    /*
+                     * HOLD OFFでは、コードパッドと同じく
+                     * 指を離した瞬間にカーソルを消す。
+                     */
+                    pulseCursor.classList.remove('visible');
+                    stopPulse();
+                }
+            }
+
+            pulsePad.addEventListener('pointerup', endPulseTouch);
+            pulsePad.addEventListener('pointercancel', endPulseTouch);
+
+            const btnPulsePadPower =
+                document.getElementById(
+                    'btnPulsePadPower'
+                );
+
+            btnPulsePadPower.addEventListener(
+                'click',
+                () => {
+                    initAudio();
+
+                    isPulsePadOn =
+                        !isPulsePadOn;
+
+                    if (!isPulsePadOn) {
+                        isPulsePadDown = false;
+                        isPulseHold = false;
+
+                        document
+                            .getElementById('btnPulseHold')
+                            .classList.remove('on');
+
+                        document
+                            .getElementById('btnPulseHold')
+                            .textContent =
+                            'HOLD: OFF';
+
+                        pulseCursor.classList.remove('visible');
+
+                        stopPulse();
+
+                        btnPulsePadPower.classList.remove(
+                            'on'
+                        );
+
+                        document
+                            .getElementById('pulseDisplay')
+                            .textContent =
+                            'PAD: OFF';
+                    } else {
+                        btnPulsePadPower.classList.add(
+                            'on'
+                        );
+
+                        updatePulseDisplay();
+                    }
+
+                    btnPulsePadPower.textContent =
+                        isPulsePadOn
+                            ? 'PAD: ON'
+                            : 'PAD: OFF';
+                }
+            );
+
+            const btnPulseHold =
+                document.getElementById(
+                    'btnPulseHold'
+                );
+
+            btnPulseHold.addEventListener(
+                'click',
+                () => {
+                    isPulseHold = !isPulseHold;
+
+                    btnPulseHold.classList.toggle(
+                        'on',
+                        isPulseHold
+                    );
+
+                    btnPulseHold.textContent =
+                        isPulseHold
+                            ? 'HOLD: ON'
+                            : 'HOLD: OFF';
+
+                    if (!isPulseHold) {
+                        if (!isPulsePadDown) {
+                            pulseCursor.classList.remove('visible');
+                            stopPulse();
+                        }
+                    }
+                }
+            );
+
+            const bpmSlider = document.getElementById('bpmSlider');
+            const bpmInput = document.getElementById('bpmInput');
+            const applyBpm = (n) => {
+                baseBpm = n;
+                bpmSlider.value = n;
+                bpmInput.value = String(n);
+            };
+
+            bpmSlider.addEventListener('input', (e) => {
+                applyBpm(parseInt(e.target.value, 10));
+            });
+
+            let bpmArmed = false;
+            const armBpm = () => {
+                bpmArmed = true;
+                setTimeout(() => { try { bpmInput.setSelectionRange(0, bpmInput.value.length); } catch (e) {} }, 0);
+            };
+            bpmInput.addEventListener('focus', armBpm);
+            bpmInput.addEventListener('pointerup', armBpm);
+
+            const handleBpmInput = () => {
+                bpmInput.value = bpmInput.value.replace(/\D/g, '').slice(0, 3);
+                if (bpmInput.value.length === 3) {
+                    const n = parseInt(bpmInput.value, 10);
+                    if (n >= 30 && n <= 200) applyBpm(n);
+                }
+            };
+            bpmInput.addEventListener('beforeinput', (e) => {
+                if (!bpmArmed) return;
+                bpmArmed = false;
+                if (e.inputType && e.inputType.indexOf('insert') === 0 && e.data) {
+                    e.preventDefault();
+                    bpmInput.value = e.data.replace(/\D/g, '').slice(0, 3);
+                    handleBpmInput();
+                } else if (e.inputType && e.inputType.indexOf('delete') === 0) {
+                    e.preventDefault();
+                    bpmInput.value = '';
+                }
+            });
+            bpmInput.addEventListener('input', handleBpmInput);
+            const commitBpm = () => {
+                bpmArmed = false;
+                let raw = bpmInput.value.trim();
+                let n = parseInt(raw, 10);
+                if (isNaN(n)) n = baseBpm;
+                n = Math.min(200, Math.max(30, n));
+                applyBpm(n);
+            };
+            bpmInput.addEventListener('blur', commitBpm);
+            bpmInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') bpmInput.blur(); });
+            document.addEventListener('pointerdown', (e) => { if (document.activeElement === bpmInput && e.target !== bpmInput) bpmInput.blur(); });
+
+            document
+                .getElementById('rootSelect')
+                .addEventListener(
+                    'change',
+                    (e) => {
+                        currentRoot = e.target.value;
+
+                        updateCodePadSound(
+                            codeNormX,
+                            codeNormY,
+                            false
+                        );
+
+                        pulseChordMidis =
+                            computePulseChordFromXY(
+                                pulseNormX,
+                                pulseNormY
+                            );
+
+                        updatePulseDisplay();
+                    }
+                );
+
+            document
+                .getElementById('scaleSelect')
+                .addEventListener(
+                    'change',
+                    (e) => {
+                        currentScale = e.target.value;
+
+                        updateCodePadSound(
+                            codeNormX,
+                            codeNormY,
+                            false
+                        );
+
+                        pulseChordMidis =
+                            computePulseChordFromXY(
+                                pulseNormX,
+                                pulseNormY
+                            );
+
+                        updatePulseDisplay();
+                    }
+                );
+
+            document
+                .getElementById('padVolSlider')
+                .addEventListener(
+                    'input',
+                    (e) => {
+                        padMasterVol =
+                            parseInt(
+                                e.target.value,
+                                10
+                            ) / 100.0;
+
+                        document
+                            .getElementById('padVolVal')
+                            .textContent =
+                            `${e.target.value}%`;
+
+                        if (
+                            isCodePadOn &&
+                            isCodeSoundActive &&
+                            audioCtx
+                        ) {
+                            padEnvGain.gain.setTargetAtTime(
+                                Math.max(
+                                    0.001,
+                                    padMasterVol * 0.85
+                                ),
+                                audioCtx.currentTime,
+                                0.08
+                            );
+                        }
+                    }
+                );
+
+            const btnPulseMode =
+                document.getElementById(
+                    'btnPulseMode'
+                );
+
+            btnPulseMode.addEventListener(
+                'click',
+                () => {
+                    if (
+                        pulseMode ===
+                        'arpeggio'
+                    ) {
+                        pulseMode = 'single';
+
+                        btnPulseMode.textContent =
+                            'MODE: SINGLE';
+                    } else {
+                        pulseMode = 'arpeggio';
+
+                        btnPulseMode.textContent =
+                            'MODE: ARPEGGIO';
+                    }
+                }
+            );
+
+            const btnPulsePanMode = document.getElementById('btnPulsePanMode');
+            btnPulsePanMode.addEventListener('click', () => {
+                pulsePanMode =
+                    pulsePanMode === 'alternate'
+                        ? 'random'
+                        : 'alternate';
+
+                btnPulsePanMode.textContent =
+                    pulsePanMode === 'alternate'
+                        ? 'PAN: ALT'
+                        : 'PAN: RANDOM';
+
+                updatePulsePanVisual(0);
+            });
+
+            const btnPulsePanPower = document.getElementById('btnPulsePanPower');
+            btnPulsePanPower.addEventListener('click', () => {
+                isPulsePan = !isPulsePan;
+                btnPulsePanPower.textContent = isPulsePan ? 'PAN: ON' : 'PAN: OFF';
+                btnPulsePanPower.classList.toggle('on', isPulsePan);
+                updatePulsePanVisual(0);
+            });
+
+            const arpVoiceSelect = document.getElementById('arpVoiceSelect');
+            arpVoiceSelect.addEventListener('change', () => {
+                pulseArpVoices = Number(arpVoiceSelect.value);
+                updatePulseDisplay();
+            });
+
+            const btnPulsePitchMode =
+                document.getElementById(
+                    'btnPulsePitchMode'
+                );
+
+            const pulseModeInfo =
+                document.getElementById(
+                    'pulseModeInfo'
+                );
+
+            btnPulsePitchMode.addEventListener(
+                'click',
+                () => {
+                    if (
+                        pulsePitchMode ===
+                        'follow'
+                    ) {
+                        /*
+                         * 追従 → 分離。
+                         * PULSE PADの現在位置はそのまま保持する。
+                         * モード切替だけでカーソル位置や
+                         * PULSE PADの音程を移動させない。
+                         */
+                        pulseChordMidis =
+                            computePulseChordFromXY(
+                                pulseNormX,
+                                pulseNormY
+                            );
+
+                        pulsePitchMode =
+                            'separate';
+
+                        btnPulsePitchMode.textContent =
+                            'PITCH: SEPARATE';
+
+                        pulseModeInfo.textContent =
+                            'SEPARATE: PULSE PITCH';
+
+                        updatePulseDisplay();
+                    } else {
+                        /*
+                         * 分離 → 追従。
+                         * PULSE PADの現在位置はそのまま保持する。
+                         * コードが有効なら再生音だけがコードへ追従し、
+                         * コードが無効ならPULSE PAD自身の音程を使う。
+                         */
+                        pulsePitchMode =
+                            'follow';
+
+                        btnPulsePitchMode.textContent =
+                            'PITCH: FOLLOW';
+
+                        pulseModeInfo.textContent =
+                            'FOLLOW: CHORD PITCH';
+
+                        updatePulseDisplay();
+                    }
+                }
+            );
+
+            const btnChordAutoPan =
+                document.getElementById(
+                    'btnChordAutoPan'
+                );
+
+            btnChordAutoPan.addEventListener(
+                'click',
+                () => {
+                    initAudio();
+
+                    isChordAutoPan =
+                        !isChordAutoPan;
+
+                    if (isChordAutoPan) {
+                        chordPanStartTime =
+                            audioCtx.currentTime;
+
+                        btnChordAutoPan.textContent =
+                            'PAN: ON';
+
+                        btnChordAutoPan.classList.add('on');
+                        startChordAutoPanAnimation();
+                    } else {
+                        btnChordAutoPan.textContent =
+                            'PAN: OFF';
+
+                        btnChordAutoPan.classList.remove('on');
+                        updateChordAutoPan();
+                        stopChordAutoPanAnimation();
+                    }
+                }
+            );
+
+            const chordPanPeriodSlider = document.getElementById('chordPanPeriodSlider');
+            if (chordPanPeriodSlider) chordPanPeriodSlider.addEventListener(
+                    'input',
+                    (e) => {
+                        const newPeriod =
+                            parseFloat(e.target.value);
+
+                        if (audioCtx && isChordAutoPan) {
+                            const now =
+                                audioCtx.currentTime;
+
+                            const phase =
+                                ((now - chordPanStartTime) / chordPanPeriodSec) *
+                                Math.PI * 2;
+
+                            chordPanPeriodSec =
+                                newPeriod;
+
+                            chordPanStartTime =
+                                now -
+                                (phase / (Math.PI * 2)) *
+                                chordPanPeriodSec;
+                        } else {
+                            chordPanPeriodSec =
+                                newPeriod;
+                        }
+                    }
+                );
+
+            const btnWaveFreeze =
+                document.getElementById(
+                    'btnWaveFreeze'
+                );
+
+            btnWaveFreeze.addEventListener(
+                'click',
+                () => {
+                    if (!isPulsePlaying) {
+                        return;
+                    }
+
+                    if (!isWaveFrozen) {
+                        frozenWaveAmp =
+                            getLiveWaveAmplitude(
+                                audioCtx.currentTime
+                            );
+
+                        frozenWavePhase =
+                            getLiveWavePhase(
+                                audioCtx.currentTime
+                            );
+
+                        isWaveFrozen = true;
+
+                        btnWaveFreeze.classList.add('active');
+
+                        btnWaveFreeze.textContent =
+                            'WAVE: RESUME';
+
+                        updateWaveVisual();
+                    } else {
+                        waveStartTime =
+                            audioCtx.currentTime -
+                            (
+                                frozenWavePhase /
+                                (Math.PI * 2)
+                            ) *
+                            wavePeriodSec;
+
+                        frozenElapsedTime = 0;
+                        isWaveFrozen = false;
+
+                        btnWaveFreeze.classList.remove('active');
+
+                        btnWaveFreeze.textContent =
+                            'WAVE: STOP';
+                    }
+                }
+            );
+
+            document
+                .getElementById('waveSpeedSlider')
+                .addEventListener(
+                    'input',
+                    (e) => {
+                        const newPeriod =
+                            parseFloat(
+                                e.target.value
+                            );
+
+                        if (
+                            !isWaveFrozen &&
+                            audioCtx &&
+                            isPulsePlaying
+                        ) {
+                            const now =
+                                audioCtx.currentTime;
+
+                            const currentPhase =
+                                getLiveWavePhase(now);
+
+                            wavePeriodSec =
+                                newPeriod;
+
+                            waveStartTime =
+                                now -
+                                (
+                                    currentPhase /
+                                    (Math.PI * 2)
+                                ) *
+                                wavePeriodSec;
+
+                            frozenElapsedTime = 0;
+                        } else {
+                            wavePeriodSec =
+                                newPeriod;
+                        }
+
+                        document
+                            .getElementById('waveSpeedVal')
+                            .textContent =
+                            `${wavePeriodSec.toFixed(1)} 秒周期`;
+                    }
+                );
+
+            document
+                .getElementById('pulseMaxVolSlider')
+                .addEventListener(
+                    'input',
+                    (e) => {
+                        pulseMaxVol =
+                            parseInt(
+                                e.target.value,
+                                10
+                            ) / 100.0;
+
+                        document
+                            .getElementById('pulseMaxVolVal')
+                            .textContent =
+                            `${e.target.value}%`;
+                    }
+                );
+
+            const btnBitCrush = document.getElementById('btnBitCrush');
+            const bitCrushBitsSlider = document.getElementById('bitCrushBitsSlider');
+            const bitCrushBitsVal = document.getElementById('bitCrushBitsVal');
+
+            btnBitCrush.addEventListener('click', () => {
+                initAudio();
+                isBitCrushOn = !isBitCrushOn;
+                btnBitCrush.textContent = isBitCrushOn
+                    ? 'BIT CRUSH: ON'
+                    : 'BIT CRUSH: OFF';
+                btnBitCrush.classList.toggle('on', isBitCrushOn);
+                updateBitCrushCurve();
+            });
+
+            bitCrushBitsSlider.addEventListener('input', (e) => {
+                bitCrushBits = parseInt(e.target.value, 10);
+                bitCrushBitsVal.textContent = `${bitCrushBits} BIT`;
+                updateBitCrushCurve();
+            });
+
+            const btnSampleRate = document.getElementById('btnSampleRate');
+            const sampleRateSlider = document.getElementById('sampleRateSlider');
+            const sampleRateVal = document.getElementById('sampleRateVal');
+
+            btnSampleRate.addEventListener('click', () => {
+                initAudio();
+                isSampleRateOn = !isSampleRateOn;
+                btnSampleRate.textContent = isSampleRateOn
+                    ? 'SAMPLE RATE: ON'
+                    : 'SAMPLE RATE: OFF';
+                btnSampleRate.classList.toggle('on', isSampleRateOn);
+                sampleRateCountL = 0;
+                sampleRateCountR = 0;
+            });
+
+            sampleRateSlider.addEventListener('input', (e) => {
+                sampleRateReduction = parseInt(e.target.value, 10);
+                sampleRateVal.textContent = `${sampleRateReduction}×`;
+                sampleRateCountL = 0;
+                sampleRateCountR = 0;
+            });
+
+            updatePulseDisplay();
+
+            // 初期状態ではカーソルを非表示にする。
+            // HOLD OFFではタップ中のみ、HOLD ONではタップ後も表示する。
+            pulseCursor.style.left = `${pulseNormX * 100}%`;
+            pulseCursor.style.top = `${(1.0 - pulseNormY) * 100}%`;
+            pulseCursor.classList.remove('visible');
+        }
+    );
+    updatePulsePanVisual(0);
+    updateChordPanVisual(0);
+</script>
+
+</body>
+</html>

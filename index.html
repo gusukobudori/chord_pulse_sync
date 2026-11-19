@@ -47,6 +47,24 @@ input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:28px
 
 .bitcrush-controls{width:calc(100% - 88px);display:flex;align-items:center;gap:10px;margin-top:10px}
 .sample-rate-controls{width:calc(100% - 88px);display:flex;align-items:center;gap:10px;margin-top:8px}.sample-rate-toggle{width:130px;height:30px;flex:none;border:1px solid var(--line-strong);background:transparent;color:var(--muted);font-size:.62rem;font-weight:600;letter-spacing:.06em;border-radius:4px}.sample-rate-toggle.on{color:var(--accent);border-color:var(--accent);background:rgba(245,158,11,.10)}.sample-rate-depth{display:flex;align-items:center;gap:8px;flex:1;min-width:0}.sample-rate-depth-label{font-size:.58rem;color:var(--muted);white-space:nowrap}.sample-rate-range{flex:1;width:auto!important;height:24px!important}.sample-rate-range::-webkit-slider-thumb{background:var(--accent)}.sample-rate-range::-moz-range-thumb{background:var(--accent)}.sample-rate-value{width:48px;text-align:right;font-size:.58rem;color:var(--muted)}.bitcrush-toggle{width:130px;height:30px;flex:none;border:1px solid var(--line-strong);background:transparent;color:var(--muted);font-size:.62rem;font-weight:600;letter-spacing:.06em;border-radius:4px}.bitcrush-toggle.on{color:var(--accent);border-color:var(--accent);background:rgba(245,158,11,.10)}.bitcrush-depth{display:flex;align-items:center;gap:8px;flex:1;min-width:0}.bitcrush-depth-label{font-size:.58rem;color:var(--muted);white-space:nowrap}.bitcrush-range{flex:1;width:auto!important;height:24px!important}.bitcrush-range::-webkit-slider-thumb{background:var(--accent)}.bitcrush-range::-moz-range-thumb{background:var(--accent)}.bitcrush-value{width:42px;text-align:right;font-size:.58rem;color:var(--muted)}
+
+/* ---- mobile fit: 横はみ出し対策 ---- */
+html,body{max-width:100%;overflow-x:hidden}
+.period-range,.chord-pan-range,.bitcrush-range,.sample-rate-range{min-width:0}
+.lfo-controls>*{min-width:0}
+.container{min-width:0}
+@media(max-width:640px){
+  .top-controls{grid-template-columns:1fr 1fr;gap:14px 16px}
+  .top-controls .bpm-box{grid-column:1 / -1}
+  .field{min-width:0}.field select{min-width:0;width:100%;flex:1}
+  .pad-title{width:100%;height:auto;flex-wrap:wrap;row-gap:8px;column-gap:8px;align-items:center}
+  .pan-header-meter,.pulse-pan-header{flex:1 1 110px;width:auto;min-width:0;margin-left:0}
+  .chord-pan-toggle{flex:none}
+  .pad-actions{order:5;flex:1 1 100%;width:100%;margin-left:0;grid-template-columns:repeat(3,minmax(0,1fr))}
+  .pad-actions .voice-slot{width:100%;min-width:0}
+  .pad-actions .btn{min-width:0;padding:0 4px}
+  .pad-actions .voice-slot.placeholder{display:block}
+}
 </style>
 </head>
 
@@ -314,26 +332,22 @@ input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:28px
     }
 
     function createReverbIR(ctx, duration = 5.0, decay = 2.4) {
+        // 4ch = true stereo: [L->L, L->R, R->L, R->R]
+        // 直接成分(L->L, R->R)を主、クロス成分(L->R, R->L)を弱くして、
+        // 左右に振った音の残響も同じ側に残る（定位が保たれる）ようにする
         const rate = ctx.sampleRate;
         const len = Math.floor(rate * duration);
-        const buf = ctx.createBuffer(2, len, rate);
-
-        for (let ch = 0; ch < 2; ch++) {
+        const buf = ctx.createBuffer(4, len, rate);
+        const CROSS = 0.30;
+        for (let ch = 0; ch < 4; ch++) {
             const data = buf.getChannelData(ch);
-
+            const k = (ch === 0 || ch === 3) ? 1.0 : CROSS;
             for (let i = 0; i < len; i++) {
                 const t = i / rate;
-
-                const env =
-                    Math.pow(1 - i / len, decay) *
-                    Math.min(1, t / 0.06);
-
-                data[i] =
-                    (Math.random() * 2 - 1) *
-                    env;
+                const env = Math.pow(1 - i / len, decay) * Math.min(1, t / 0.06);
+                data[i] = (Math.random() * 2 - 1) * env * k;
             }
         }
-
         return buf;
     }
 
@@ -369,16 +383,16 @@ input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:28px
         revLowpass.frequency.value = 3200;
 
         dryBus = audioCtx.createGain();
-        dryBus.gain.value = 0.55;
+        dryBus.gain.value = 0.85;
 
         wetBus = audioCtx.createGain();
-        wetBus.gain.value = reverbAmount * 0.85;
+        wetBus.gain.value = reverbAmount * 0.40; // 旧0.85: 残響が原音より大きく定位を覆っていた
 
         const comp =
             audioCtx.createDynamicsCompressor();
 
-        comp.threshold.value = -14;
-        comp.ratio.value = 4;
+        comp.threshold.value = -12;
+        comp.ratio.value = 2.5;
 
         bitCrushNode = audioCtx.createWaveShaper();
         bitCrushNode.oversample = 'none';
@@ -441,9 +455,17 @@ input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:28px
         sampleRateNode.connect(masterOut);
         sampleRateNode.connect(reverbInput);
 
-        reverbInput.connect(convolver);
+        const revPre = audioCtx.createDelay(0.2);
+        revPre.delayTime.value = 0.022;
+        const revHp = audioCtx.createBiquadFilter();
+        revHp.type = 'highpass';
+        revHp.frequency.value = 220;
+
+        reverbInput.connect(revPre);
+        revPre.connect(convolver);
         convolver.connect(revLowpass);
-        revLowpass.connect(wetBus);
+        revLowpass.connect(revHp);
+        revHp.connect(wetBus);
         wetBus.connect(masterOut);
 
         masterOut.connect(audioCtx.destination);
@@ -460,9 +482,9 @@ input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:28px
 
         padFilter.connect(padEnvGain);
         padEnvGain.connect(dryBus);
-        padEnvGain.connect(convolver);
+        padEnvGain.connect(revPre);
 
-        const pans = [-0.55, 0.55, -0.25, 0.25];
+        const pans = [-0.95, 0.95, -0.50, 0.50];
 
         currentChordMidis =
             computeChordFromXY(codeNormX);

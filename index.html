@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Ambient & Pulse Companion v3</title>
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 
     <style>
 :root {
@@ -65,6 +66,22 @@ html,body{max-width:100%;overflow-x:hidden}
   .pad-actions .btn{min-width:0;padding:0 4px}
   .pad-actions .voice-slot.placeholder{display:block}
 }
+
+/* ---- volume fader: ページが一緒に上下するのを防ぐ ---- */
+.vertical-volume,.vertical-range{touch-action:none}
+/* ---- BIT CRUSH / SAMPLE RATE は全幅 ---- */
+.bitcrush-controls,.sample-rate-controls{width:100%}
+/* ---- SYNC ---- */
+.sync-row{display:flex;align-items:center;gap:8px}
+.sync-room{width:96px;height:34px;flex:none;background:transparent;color:var(--text);border:1px solid var(--line-strong);border-radius:4px;padding:0 10px;font:inherit;font-size:16px;font-weight:600;letter-spacing:.2em;text-align:center;-webkit-user-select:text;user-select:text}
+.sync-room::placeholder{color:var(--muted);letter-spacing:.08em;font-size:.7rem;font-weight:500}
+.sync-btn{height:34px;flex:none;padding:0 14px;font-size:.68rem}
+.sync-status{font-size:.68rem;letter-spacing:.04em;color:var(--muted);margin-left:auto;text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sync-status.ok{color:#6fcf97}
+.sync-note{font-size:.62rem;color:var(--muted);margin-top:8px;line-height:1.5}
+select:disabled,input:disabled{opacity:.35;cursor:not-allowed}
+.top-controls.locked .label{opacity:.5}
+@media(max-width:640px){.sync-row{flex-wrap:wrap}.sync-status{flex:1 1 100%;margin-left:0;text-align:left}}
 </style>
 </head>
 
@@ -81,6 +98,16 @@ html,body{max-width:100%;overflow-x:hidden}
     <div class="field"><span class="label">ROOT</span><select id="rootSelect"><option value="C">C</option><option value="C#">C#</option><option value="D">D</option><option value="D#">D#</option><option value="E" selected>E</option><option value="F">F</option><option value="F#">F#</option><option value="G">G</option><option value="G#">G#</option><option value="A">A</option><option value="A#">A#</option><option value="B">B</option></select></div>
     <div class="field"><span class="label">SCALE</span><select id="scaleSelect"><option value="chromatic">CHROMATIC</option><option value="major">MAJOR</option><option value="natural_minor">NATURAL MINOR</option><option value="dorian" selected>DORIAN</option><option value="pentatonic">PENTATONIC</option></select></div>
   </div>
+</div>
+
+<div class="sec" id="syncSec">
+  <div class="sync-row">
+    <span class="label">SYNC</span>
+    <input class="sync-room" id="syncRoomInput" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="ROOM ID" aria-label="Master room ID">
+    <button class="btn sync-btn" id="btnSyncConnect">CONNECT</button>
+    <span class="sync-status" id="syncStatus">SLAVE / OFF</span>
+  </div>
+  <div class="sync-note">Phase Intertwiner の MASTER のROOM IDを入力。接続中は TEMPO / ROOT / SCALE がマスターに固定され、PULSE はマスターのグリッドにクオンタイズされます。</div>
 </div>
 
 <div class="sec pad-section">
@@ -957,6 +984,17 @@ html,body{max-width:100%;overflow-x:hidden}
             audioCtx.currentTime +
             lookahead
         ) {
+            // マスターのグリッドにクオンタイズ（接続中かつマスターが再生中のとき）
+            const useGrid = pulseUseGrid();
+            if (useGrid) {
+                if (pulseGridN === null) {
+                    pulseGridN = Math.ceil(gStepPos(audioToMasterPerf(nextPulseTime)) - 1e-6);
+                }
+                nextPulseTime = masterPerfToAudio(gStepTime(pulseGridN));
+            } else {
+                pulseGridN = null;
+            }
+
             const waveAmp =
                 getWaveAmplitude(
                     nextPulseTime
@@ -1005,7 +1043,12 @@ html,body{max-width:100%;overflow-x:hidden}
                 );
             }
 
-            nextPulseTime += stepDur;
+            if (useGrid) {
+                pulseGridN++;
+                nextPulseTime = masterPerfToAudio(gStepTime(pulseGridN));
+            } else {
+                nextPulseTime += stepDur;
+            }
             pulseStepCount++;
 
             if (isPulseFading) {
@@ -1067,6 +1110,7 @@ html,body{max-width:100%;overflow-x:hidden}
 
         pulseStepCount = 0;
 
+        pulseGridN = null;
         pulseScheduler();
         updateWaveVisual();
     }
@@ -1576,6 +1620,10 @@ html,body{max-width:100%;overflow-x:hidden}
             const bpmSlider = document.getElementById('bpmSlider');
             const bpmInput = document.getElementById('bpmInput');
             const applyBpm = (n) => {
+                if (typeof syncConnected === 'function' && syncConnected()) {   // スレーブ中はマスターに従う
+                    bpmSlider.value = baseBpm; bpmInput.value = String(baseBpm);
+                    return;
+                }
                 baseBpm = n;
                 bpmSlider.value = n;
                 bpmInput.value = String(n);
@@ -2047,6 +2095,181 @@ html,body{max-width:100%;overflow-x:hidden}
     );
     updatePulsePanVisual(0);
     updateChordPanVisual(0);
+
+    /* =========================================================
+     * NETWORK SYNC  ― Phase Intertwiner(MASTER) に SLAVE として接続
+     *  - TEMPO / ROOT / SCALE はマスターに強制同期（UIはグレーアウト）
+     *  - PULSE はマスターの共通グリッド(16分・SWING込み)にクオンタイズ
+     * ========================================================= */
+    const SYNC_PREFIX = 'phase-intertwiner-sync-v1-';
+    const syncS = { peer: null, conn: null, ready: false, offsetMs: 0, bestRtt: Infinity, timer: null };
+    const session = { active: false, anchorMs: 0, anchorStep: 0, bpm: 102, swing: 0 };
+    let pulseGridN = null;
+
+    const gDur = (bpm) => 60000 / bpm / 4;
+    function gI(k, bpm, sw) {
+        const d = gDur(bpm);
+        if (!(sw > 0)) return d;
+        const f = sw / 100;
+        return ((((k % 2) + 2) % 2) === 1) ? d * (1 - f * 0.5) : d * (1 + f * 0.5);
+    }
+    function gStepTime(n) {
+        const s = session, c = n - s.anchorStep, d = gDur(s.bpm);
+        if (c <= 0) return s.anchorMs + c * d;
+        const pairs = Math.floor(c / 2);
+        let t = s.anchorMs + pairs * 2 * d;
+        if (c % 2) t += gI(s.anchorStep, s.bpm, s.swing);
+        return t;
+    }
+    function gStepPos(t) {
+        const s = session, d = gDur(s.bpm), a = s.anchorStep;
+        if (t < s.anchorMs) return a - (s.anchorMs - t) / d;
+        const e = t - s.anchorMs;
+        const pairs = Math.floor(e / (2 * d));
+        const rem = e - pairs * 2 * d;
+        const i0 = gI(a, s.bpm, s.swing);
+        if (rem < i0) return a + 2 * pairs + rem / i0;
+        return a + 2 * pairs + 1 + (rem - i0) / gI(a + 1, s.bpm, s.swing);
+    }
+    function audioToMasterPerf(t) {
+        return performance.now() + syncS.offsetMs + (t - audioCtx.currentTime) * 1000;
+    }
+    function masterPerfToAudio(ms) {
+        return (ms - syncS.offsetMs) / 1000 + (audioCtx.currentTime - performance.now() / 1000);
+    }
+    function syncConnected() { return !!syncS.conn && syncS.conn.open; }
+    function pulseUseGrid() {
+        return !!audioCtx && syncConnected() && syncS.ready && session.active;
+    }
+
+    function syncSetStatus(msg, ok) {
+        const el = document.getElementById('syncStatus');
+        if (!el) return;
+        el.textContent = msg;
+        el.classList.toggle('ok', !!ok);
+    }
+    function syncApplyLock() {
+        const locked = syncConnected();
+        ['bpmSlider', 'bpmInput', 'rootSelect', 'scaleSelect'].forEach((id) => {
+            const el = document.getElementById(id);
+            if (el) el.disabled = locked;
+        });
+        const top = document.querySelector('.top-controls');
+        if (top) top.classList.toggle('locked', locked);
+        const btn = document.getElementById('btnSyncConnect');
+        if (btn) {
+            btn.textContent = (syncS.peer ? 'DISCONNECT' : 'CONNECT');
+            btn.classList.toggle('on', !!syncS.peer);
+        }
+        const inp = document.getElementById('syncRoomInput');
+        if (inp) inp.disabled = !!syncS.peer;
+    }
+
+    function applySyncedBpm(bpm) {
+        const n = Math.min(200, Math.max(30, Math.round(bpm)));
+        if (!Number.isFinite(n)) return;
+        baseBpm = n;
+        const sl = document.getElementById('bpmSlider'), inp = document.getElementById('bpmInput');
+        if (sl) sl.value = n;
+        if (inp) inp.value = String(n);
+    }
+    function applySyncedSelect(id, value) {
+        const el = document.getElementById(id);
+        if (!el || typeof value !== 'string' || el.value === value) return;
+        if (![...el.options].some((o) => o.value === value)) return;
+        el.value = value;
+        el.dispatchEvent(new Event('change', { bubbles: true }));   // 既存の change 処理をそのまま使う
+    }
+
+    function syncPing() {
+        if (!syncConnected()) return;
+        try { syncS.conn.send({ type: 'CLOCK_SYNC_PING', t1: performance.now() }); } catch (e) {}
+    }
+    function syncClearTimer() { if (syncS.timer) { clearTimeout(syncS.timer); syncS.timer = null; } }
+    function syncSchedulePing() {
+        syncClearTimer();
+        syncS.timer = setTimeout(() => { syncPing(); syncSchedulePing(); }, 2000);
+    }
+    function syncHandlePong(d) {
+        const t4 = performance.now(), t1 = Number(d.t1), t2 = Number(d.t2), t3 = Number(d.t3);
+        if (![t1, t2, t3].every(Number.isFinite)) return;
+        const off = ((t2 - t1) + (t3 - t4)) / 2;
+        const rtt = (t4 - t1) - (t3 - t2);
+        if (rtt <= syncS.bestRtt) {
+            syncS.offsetMs = off; syncS.bestRtt = rtt; syncS.ready = true;
+            syncSetStatus('SYNCED  RTT ' + rtt.toFixed(0) + 'ms', true);
+        }
+    }
+    function syncAck(cmd) {
+        try { syncS.conn.send({ type: 'MASTER_COMMAND_ACK', command: cmd.command, commandId: cmd.commandId }); } catch (e) {}
+        if (Number.isFinite(Number(cmd.bpm))) applySyncedBpm(Number(cmd.bpm));
+    }
+
+    function syncDisconnect(msg) {
+        syncClearTimer();
+        if (syncS.peer) { try { syncS.peer.destroy(); } catch (e) {} }
+        syncS.peer = null; syncS.conn = null; syncS.ready = false; syncS.bestRtt = Infinity;
+        session.active = false; pulseGridN = null;
+        syncApplyLock();
+        syncSetStatus(msg || 'SLAVE / OFF', false);
+    }
+
+    function syncConnect() {
+        const inp = document.getElementById('syncRoomInput');
+        const code = (inp.value || '').replace(/\D/g, '').slice(0, 4);
+        if (code.length !== 4) { syncSetStatus('ENTER 4-DIGIT ROOM ID', false); return; }
+        if (typeof Peer === 'undefined') { syncSetStatus('PeerJS を読み込めません (ネットワーク確認)', false); return; }
+        initAudio();
+        syncS.ready = false; syncS.bestRtt = Infinity; session.active = false;
+        syncS.peer = new Peer();
+        syncApplyLock();
+        syncSetStatus('CONNECTING…', false);
+
+        syncS.peer.on('open', () => {
+            const conn = syncS.peer.connect(SYNC_PREFIX + code, { reliable: true });
+            syncS.conn = conn;
+            conn.on('open', () => {
+                syncApplyLock();
+                syncSetStatus('CONNECTED / CLOCK SYNC…', false);
+                // 最初は素早く複数回測って精度を上げる
+                [0, 150, 300, 600, 1000].forEach((ms) => setTimeout(syncPing, ms));
+                syncSchedulePing();
+            });
+            conn.on('data', (d) => {
+                if (!d) return;
+                if (d.type === 'CLOCK_SYNC_PONG') {
+                    syncHandlePong(d);
+                    if (d.masterCommand) syncAck(d.masterCommand);
+                    return;
+                }
+                if (d.type === 'SESSION') {
+                    session.active = !!d.active;
+                    session.anchorMs = Number(d.anchorMs); session.anchorStep = Number(d.anchorStep);
+                    session.bpm = Number(d.bpm); session.swing = Number(d.swing) || 0;
+                    if (Number.isFinite(session.bpm)) applySyncedBpm(session.bpm);
+                    applySyncedSelect('rootSelect', d.root);
+                    applySyncedSelect('scaleSelect', d.scale);
+                    return;
+                }
+                if (d.type === 'MASTER_COMMAND') { syncAck(d); return; }
+            });
+            conn.on('close', () => syncDisconnect('DISCONNECTED'));
+            conn.on('error', () => syncDisconnect('CONNECTION ERROR'));
+        });
+        syncS.peer.on('error', () => syncDisconnect('ROOM NOT FOUND / ERROR'));
+    }
+
+    document.getElementById('btnSyncConnect').addEventListener('click', () => {
+        if (syncS.peer) syncDisconnect('SLAVE / OFF'); else syncConnect();
+    });
+    document.getElementById('syncRoomInput').addEventListener('input', (e) => {
+        e.target.value = e.target.value.replace(/\D/g, '').slice(0, 4);
+    });
+
+    // フェーダーを触っている間、ページがスクロールしないようにする（iOS等の保険）
+    document.querySelectorAll('.vertical-volume').forEach((el) => {
+        el.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+    });
 </script>
 
 </body>
